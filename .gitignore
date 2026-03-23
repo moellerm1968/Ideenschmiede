@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.js.map
+
+# Environment (contains API key!)
+.env
+
+# Runtime data — generierte Inhalte
+data/Ideenbacklog.md
+data/ProductBacklog.md
+data/DetailedProductPlans.md
+data/plans/
+data/costs.json
+data/alt/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+

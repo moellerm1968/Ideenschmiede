@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🏭 Ideenschmiede — KI-Firmen-Simulation</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- ═══════════════════════ HEADER ═══════════════════════ -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="logo">🏭</span>
+      <div>
+        <h1>Ideenschmiede</h1>
+        <p class="subtitle">KI-Firmen-Simulation · Anthropic Claude Haiku 4.5</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="costs-panel">
+        <div class="costs-block">
+          <span class="costs-label">Gesamtkosten</span>
+          <span class="costs-value" id="totalCost">$0.0000</span>
+        </div>
+        <div class="costs-block">
+          <span class="costs-label">API-Calls</span>
+          <span class="costs-value" id="totalCalls">0</span>
+        </div>
+        <div class="costs-block">
+          <span class="costs-label">Websuchen</span>
+          <span class="costs-value" id="totalSearches">0</span>
+        </div>
+        <div class="costs-block">
+          <span class="costs-label">Verbindung</span>
+          <span class="status-badge idle" id="connectionStatus">Verbinde…</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════ AGENTS ═══════════════════════ -->
+  <section class="agents-section">
+    <h2 class="section-title">🤖 Agenten-Status</h2>
+    <div class="agents-grid" id="agentsGrid">
+      <!-- Dynamically populated -->
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ BACKLOGS ═════════════════════ -->
+  <main class="backlogs-container">
+
+    <!-- Ideen-Backlog -->
+    <div class="backlog-column" id="col-ideas">
+      <div class="column-header ideas-header">
+        <span class="column-icon">💡</span>
+        <div>
+          <h2>Ideen-Backlog</h2>
+          <p class="column-desc">CMO recherchiert Trends &amp; generiert Ideen</p>
+        </div>
+        <span class="entry-count" id="ideaCount">0</span>
+      </div>
+      <div class="column-content" id="ideaList">
+        <div class="empty-state">
+          <span class="empty-icon">🔍</span>
+          <p>Der CMO recherchiert gerade…<br />Erste Ideen erscheinen in Kürze.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product-Backlog -->
+    <div class="backlog-column" id="col-products">
+      <div class="column-header products-header">
+        <span class="column-icon">📦</span>
+        <div>
+          <h2>Product-Backlog</h2>
+          <p class="column-desc">3 PMs detaillieren Ideen parallel</p>
+        </div>
+        <span class="entry-count" id="productCount">0</span>
+      </div>
+      <div class="column-content" id="productList">
+        <div class="empty-state">
+          <span class="empty-icon">⏳</span>
+          <p>Warte auf erste Ideen…<br />Product Manager stehen bereit.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ═══════════════════════ DPD TABLE ════════════════════ -->
+  <section class="dpd-section">
+    <div class="section-title-row">
+      <h2 class="section-title">📋 Detaillierte Produktpläne (DPDs)</h2>
+      <span class="entry-count" id="dpdCount">0</span>
+    </div>
+    <div class="dpd-table-wrap">
+      <table class="dpd-table">
+        <thead>
+          <tr>
+            <th>Empfehlung</th>
+            <th>ID</th>
+            <th>Produkttitel</th>
+            <th>Quelle</th>
+            <th>Erstellt</th>
+          </tr>
+        </thead>
+        <tbody id="dpdTableBody">
+          <tr class="dpd-empty">
+            <td colspan="5"><span>🔬</span> Spezialisten-Teams bewerten noch — DPDs erscheinen hier nach Abschluss.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ COST BREAKDOWN ═══════════════ -->
+  <section class="cost-breakdown-section">
+    <h2 class="section-title">💰 Kosten-Aufschlüsselung</h2>
+    <div class="cost-breakdown-grid" id="costBreakdown">
+      <div class="cost-agent-card placeholder">
+        <span class="agent-id">—</span>
+        <span class="agent-cost-val">Warte auf API-Aktivität…</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ ACTIVITY LOG ════════════════ -->
+  <section class="activity-section">
+    <div class="activity-header">
+      <h2 class="section-title">📡 Aktivitäts-Log</h2>
+      <button class="btn-clear" onclick="clearLog()">Log leeren</button>
+    </div>
+    <div class="activity-log" id="activityLog">
+      <p class="log-entry log-info">System gestartet — warte auf SSE-Verbindung…</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ MODAL ════════════════════════ -->
+  <div class="modal-overlay" id="modalOverlay" onclick="closeModal()">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalTitle">Detail-Ansicht</h3>
+        <button class="modal-close" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
