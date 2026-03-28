@@ -1,6 +1,8 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { EventEmitter } from 'events';
-import { recordUsage, ApiUsage } from '../data/costTracker';
+import { getCopilotClient, approveAll } from '../copilotClient';
+import { recordUsage } from '../data/costTracker';
+
+const COPILOT_MODEL = process.env.COPILOT_MODEL ?? 'gpt-4o-mini';
 
 export interface AgentStatus {
   id: string;
@@ -13,7 +15,6 @@ export interface AgentStatus {
 }
 
 export abstract class BaseAgent extends EventEmitter {
-  protected client: Anthropic;
   protected status: AgentStatus;
   protected running = false;
   private loopTimer: ReturnType<typeof setTimeout> | null = null;
@@ -24,7 +25,6 @@ export abstract class BaseAgent extends EventEmitter {
     protected readonly intervalMs: number,
   ) {
     super();
-    this.client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     this.status = {
       id: agentId,
       role,
@@ -98,34 +98,21 @@ export abstract class BaseAgent extends EventEmitter {
   }
 
   /**
-   * Call the Anthropic API, handle `pause_turn` continuation for server tools,
-   * and record token usage automatically.
+   * Call the GitHub Copilot SDK with a system prompt and user message.
+   * Creates a new session per call (stateless invocation pattern).
    */
-  protected async callAnthropic(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
-    let response = await this.client.messages.create(params);
-    await recordUsage(this.agentId, response.usage as ApiUsage);
-    this.emit('api_call', { agentId: this.agentId, usage: response.usage });
+  protected async callCopilot(systemPrompt: string, userPrompt: string): Promise<string> {
+    const client = getCopilotClient();
+    const session = await client.createSession({
+      model: COPILOT_MODEL,
+      systemMessage: { content: systemPrompt },
+      onPermissionRequest: approveAll,
+    });
 
-    // Continue if server tool (web_search) fills its iteration budget
-    // `pause_turn` is a valid stop reason for server tools but not yet in SDK 0.39 types
-    while ((response.stop_reason as string) === 'pause_turn') {
-      const messages: Anthropic.MessageParam[] = [
-        ...(params.messages as Anthropic.MessageParam[]),
-        { role: 'assistant', content: response.content },
-      ];
-      response = await this.client.messages.create({ ...params, messages });
-      await recordUsage(this.agentId, response.usage as ApiUsage);
-      this.emit('api_call', { agentId: this.agentId, usage: response.usage });
-    }
+    const response = await session.sendAndWait({ prompt: userPrompt });
+    await recordUsage(this.agentId);
+    this.emit('api_call', { agentId: this.agentId });
 
-    return response;
-  }
-
-  /** Extract plain text from an Anthropic response. */
-  protected extractText(response: Anthropic.Message): string {
-    return response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map((b) => b.text)
-      .join('\n');
+    return response?.data.content ?? '';
   }
 }

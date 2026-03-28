@@ -1,7 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { BaseAgent } from '../base.agent';
 import { claimNextProduct, markProductDone, appendDetailedPlan } from '../../data/backlogManager';
-import { recordUsage, ApiUsage } from '../../data/costTracker';
 import {
   evaluateSoftwareEngineer,
   evaluateCloudArchitect,
@@ -9,7 +7,6 @@ import {
   evaluateController,
 } from './specialists';
 
-const MODEL = 'claude-haiku-4-5';
 const TEAM_ORCHESTRATOR_SYSTEM = `Du bist ein erfahrener Chief Product Officer (CPO) und moderierst ein interdisziplinäres Bewertungs-Team.
 Deine Aufgabe: Fasse die Assessments von Software-Engineer, Cloud-Architekt, Marktforscher und Controller zu einem kohärenten, abgestimmten Team-Konsens zusammen.
 Identifiziere Widersprüche, wichtigste Erkenntnisse und gib eine klare Gesamt-Empfehlung ab.`;
@@ -31,16 +28,16 @@ export class TeamOrchestratorAgent extends BaseAgent {
     this.setStatus('running', `Bewertet Produkt ${product.id}: "${product.title}"`);
     this.emit('team_started', { productId: product.id, title: product.title });
 
-    const emitUsage = (agentId: string, usage: ApiUsage) => {
-      this.emit('api_call', { agentId, usage });
+    const emitCall = (agentId: string) => {
+      this.emit('api_call', { agentId });
     };
 
     // Step 1: SW, Cloud, Market all run in parallel
     this.setStatus('running', `[${product.id}] Parallele Spezialisten-Analyse läuft…`);
     const [swResult, cloudResult, marketResult] = await Promise.all([
-      evaluateSoftwareEngineer(product.content, this.client, emitUsage),
-      evaluateCloudArchitect(product.content, this.client, emitUsage),
-      evaluateMarketResearcher(product.content, this.client, emitUsage),
+      evaluateSoftwareEngineer(product.content, emitCall),
+      evaluateCloudArchitect(product.content, emitCall),
+      evaluateMarketResearcher(product.content, emitCall),
     ]);
 
     // Step 2: Controller needs outputs from the three above
@@ -50,20 +47,14 @@ export class TeamOrchestratorAgent extends BaseAgent {
       swResult.content,
       cloudResult.content,
       marketResult.content,
-      this.client,
-      emitUsage,
+      emitCall,
     );
 
     // Step 3: Team synthesis / consensus call
     this.setStatus('running', `[${product.id}] Team-Konsens wird erarbeitet…`);
-    const synthesisResponse = await this.callAnthropic({
-      model: MODEL,
-      max_tokens: 2048,
-      system: TEAM_ORCHESTRATOR_SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content: `Fasse die folgenden vier Spezialisten-Assessments zum Produkt "${product.title}" (ID: ${product.id}) zu einem abgestimmten Team-Konsens zusammen:
+    const teamConsensus = await this.callCopilot(
+      TEAM_ORCHESTRATOR_SYSTEM,
+      `Fasse die folgenden vier Spezialisten-Assessments zum Produkt "${product.title}" (ID: ${product.id}) zu einem abgestimmten Team-Konsens zusammen:
 
 === SOFTWARE-ASSESSMENT ===
 ${swResult.content}
@@ -82,11 +73,7 @@ Erstelle einen kurzen Team-Konsens-Abschnitt (maximal 300 Wörter) mit:
 2. **Identifizierte Widersprüche oder offene Fragen** (falls vorhanden)
 3. **Team-Empfehlung**: Investieren / Bedingt investieren / Nicht investieren — mit Begründung in 1-3 Sätzen
 4. **Nächster Schritt**: Was sollte als nächstes getan werden?`,
-        },
-      ],
-    });
-
-    const teamConsensus = this.extractText(synthesisResponse);
+    );
     const today = new Date().toISOString().slice(0, 10);
     const iso = new Date().toISOString();
 

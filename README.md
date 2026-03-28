@@ -2,36 +2,39 @@
 
 Autonome KI-Agenten simulieren eine Produktentwicklungs-Firma mit CMO, Produkt-Managern und zwei parallelen Spezialisten-Teams. Fokus: **SaaS / Software / AI für KMU (DACH)**.
 
+LLM-Zugang ausschließlich über das **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** — kein direkter API-Key nötig, Authentifizierung über die GitHub Copilot CLI.
+
+## Voraussetzungen
+
+- Node.js 18+
+- [GitHub Copilot CLI](https://docs.github.com/en/copilot/how-tos/set-up/install-copilot-cli) installiert und eingeloggt:
+  ```bash
+  gh extension install github/gh-copilot
+  gh auth login
+  ```
+
 ## Schnellstart
 
-### 1. API-Key eintragen
 ```bash
 cp .env.example .env
-# ANTHROPIC_API_KEY=sk-ant-... in .env eintragen
-```
-
-### 2. Starten
-```bash
+npm install
 npm run dev
 ```
 
-### 3. Dashboard öffnen
-```
-http://localhost:3000
-```
+Dashboard öffnen: [http://localhost:3000](http://localhost:3000)
 
 ---
 
 ## Architektur
 
 ```
-CMO-Agent (alle 10 Min, gründliche Web-Recherche)
+CMO-Agent
   └─► Ideen-Backlog (data/Ideenbacklog.md)
-        ├─► PM-1 (alle 2 Min, B2C-KMU-Fokus)
-        ├─► PM-2 (alle 2 Min, B2B-KMU-Fokus)   → Product-Backlog
-        └─► PM-3 (alle 2 Min, Plattform-Fokus)
-              ├─► Team-Orchestrator 1 (alle 1 Min) ─┐
-              └─► Team-Orchestrator 2 (alle 1 Min) ─┘  (parallel)
+        ├─► PM-1 (B2C-Fokus)
+        ├─► PM-2 (B2B/Enterprise-Fokus)   → Product-Backlog (data/ProductBacklog.md)
+        └─► PM-3 (Plattform-Fokus)
+              ├─► Team-Orchestrator 1 ─┐
+              └─► Team-Orchestrator 2 ─┘  (parallel)
                     ├─► SW-Engineer       ─┐
                     ├─► Cloud-Architekt    ├─ parallel
                     ├─► Market-Researcher ─┘
@@ -39,46 +42,49 @@ CMO-Agent (alle 10 Min, gründliche Web-Recherche)
                           └─► Detaillierter Produktplan (data/plans/PLAN-NNN.md)
 ```
 
-## Kosten-Modell (Haiku 4.5)
-
-| Typ | Preis |
-|---|---|
-| Input-Tokens | $1.00 / MTok |
-| Output-Tokens | $5.00 / MTok |
-| Web-Suche (CMO) | $10.00 / 1.000 Suchen |
-
 ## Umgebungsvariablen (.env)
 
 | Variable | Standard | Beschreibung |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | — | **Pflicht** |
+| `COPILOT_MODEL` | `gpt-4o-mini` | LLM-Modell (z. B. `gpt-4.1`, `gpt-4o-mini`) |
 | `PORT` | `3000` | Server-Port |
-| `CMO_INTERVAL_MS` | `600000` | CMO-Loop (10 Min, gründlicher) |
-| `PM_INTERVAL_MS` | `120000` | PM-Loop (2 Min) |
-| `SPECIALIST_INTERVAL_MS` | `60000` | Spezialisten-Loop (1 Min, 2× Teams) |
+| `CMO_INTERVAL_MS` | `600000` | CMO-Loop-Intervall (ms) |
+| `PM_INTERVAL_MS` | `120000` | Product-Manager-Loop-Intervall (ms) |
+| `SPECIALIST_INTERVAL_MS` | `60000` | Spezialisten-Teams-Intervall (ms) |
 
 ## Rollen-Profile
 
 Alle Agenten-Profile in `agents/`:
-- `CMO.Agent.md` — Trend-Recherche, Ideen-Generierung (SaaS/AI für KMU, DACH)
-- `ProductManager.Agent.md` — Produkt-Briefings (3 Perspektiven: B2C/B2B/Plattform)
-- `SoftwareEngineer.Agent.md` — Technische Machbarkeit, Architektur
-- `CloudArchitect.Agent.md` — Cloud-Architektur (AWS/GCP/Azure), Infrastruktur-Kosten, DSGVO
-- `MarketResearcher.Agent.md` — TAM/SAM/SOM, Wettbewerb, KMU-Markt
-- `Controller.Agent.md` — Business Case, NPV, IRR, Break-Even
+
+| Datei | Rolle |
+|---|---|
+| `CMO.Agent.md` | Trend-Recherche, Ideen-Generierung (SaaS/AI für KMU, DACH) |
+| `ProductManager.Agent.md` | Produkt-Briefings (3 Perspektiven: B2C / B2B / Plattform) |
+| `SoftwareEngineer.Agent.md` | Technische Machbarkeit, Architektur, Aufwand |
+| `CloudArchitect.Agent.md` | Cloud-Architektur (AWS/GCP/Azure), Infra-Kosten, DSGVO |
+| `MarketResearcher.Agent.md` | TAM/SAM/SOM, Wettbewerb, KMU-Markt DACH |
+| `Controller.Agent.md` | Business Case, NPV, IRR, Break-Even |
 
 ## Datenhaltung
 
-Alle Daten in `data/`:
-- `Ideenbacklog.md` — CMO-Ideen (FIFO-Queue)
-- `ProductBacklog.md` — PM-Produktbriefings
-- `plans/PLAN-NNN.md` — Je ein Detaillierter Produktplan pro Datei
-- `costs.json` — API-Kosten per Agent (kumulativ)
+| Pfad | Inhalt |
+|---|---|
+| `data/Ideenbacklog.md` | CMO-Ideen (FIFO-Queue, PENDING → IN_PROGRESS → DONE) |
+| `data/ProductBacklog.md` | PM-Produktbriefings (PENDING_REVIEW → IN_REVIEW → REVIEWED) |
+| `data/plans/PLAN-NNN.md` | Je ein vollständiger Detaillierter Produktplan |
+| `data/costs.json` | API-Aufruf-Zähler je Agent (kumulativ) |
 
-## Dashboard-Features
+## Dashboard
 
-- **Agenten-Status** — Live-Statusanzeige aller 6 Agenten via SSE
+- **Agenten-Status** — Live-Statusanzeige aller Agenten via SSE
 - **Ideen- & Product-Backlog** — Karten-Ansicht mit Status-Badges
-- **DPD-Tabelle** — Alle fertigen Produktpläne, sortiert nach kommerzieller Priorität (✅ Investieren → ⚠️ Bedingt → ❌ Nicht) — Klick öffnet den vollständigen Plan im Browser
-- **Kosten-Aufschlüsselung** — Token-Verbrauch und Kosten je Agent in Echtzeit
+- **Produktpläne** — Tabelle aller fertigen Pläne (✅ Investieren / ⚠️ Bedingt / ❌ Nicht), Klick öffnet den vollständigen Plan
+- **API-Aufrufe** — Call-Zähler je Agent in Echtzeit
 - **Aktivitäts-Log** — Live-Feed aller Agent-Aktionen
+
+## Technischer Stack
+
+- **Runtime:** Node.js + TypeScript (`tsx` für Dev)
+- **LLM-Zugang:** `@github/copilot-sdk`
+- **Server:** Express + SSE
+- **Concurrency:** `async-mutex` (je eine Mutex pro Backlog-Datei)

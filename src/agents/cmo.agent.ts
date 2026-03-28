@@ -1,11 +1,9 @@
 import fs from 'fs/promises';
 import path from 'path';
-import Anthropic from '@anthropic-ai/sdk';
 import { BaseAgent } from './base.agent';
 import { appendIdea } from '../data/backlogManager';
 
 const AGENT_PROFILE = path.join(process.cwd(), 'agents', 'CMO.Agent.md');
-const MODEL = 'claude-haiku-4-5';
 
 export class CMOAgent extends BaseAgent {
   constructor(intervalMs: number) {
@@ -18,22 +16,7 @@ export class CMOAgent extends BaseAgent {
     const systemPrompt = await fs.readFile(AGENT_PROFILE, 'utf-8');
     const today = new Date().toISOString().slice(0, 10);
 
-    const response = await this.callAnthropic({
-      model: MODEL,
-      max_tokens: 4096,
-      system: systemPrompt,
-      tools: [
-        // web_search_20250305 is a server tool not yet typed in SDK 0.39 — cast via unknown
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-          max_uses: 5,
-        } as unknown as Anthropic.Tool,
-      ],
-      messages: [
-        {
-          role: 'user',
-          content: `Heute ist der ${today}. 
+    const userPrompt = `Heute ist der ${today}. 
           
 Recherchiere aktuelle Markttrends und Produktinnovationen. Identifiziere 2-3 konkrete, vielversprechende Produktideen aus unterschiedlichen Bereichen.
 
@@ -56,12 +39,10 @@ Für jede Idee verwende EXAKT das folgende Format (ersetze IDEA-000 mit IDEA-000
 **Datenquellen:** [URLs oder Referenzen]
 ---
 
-Schreibe alle 2-3 Ideen direkt hintereinander, jede im exakten Format oben.`,
-        },
-      ],
-    });
+Schreibe alle 2-3 Ideen direkt hintereinander, jede im exakten Format oben.`;
 
-    const text = this.extractText(response);
+    const text = await this.callCopilot(systemPrompt, userPrompt);
+
     if (!text.trim()) {
       this.setStatus('idle', 'Keine Ideen generiert (leere Antwort)');
       return;
@@ -98,3 +79,4 @@ function wrapIfNeeded(text: string): string {
 ${text.trim()}
 ---`;
 }
+

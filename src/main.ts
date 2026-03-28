@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import { createServer } from './server';
+import { stopCopilotClient } from './copilotClient';
 import { CMOAgent } from './agents/cmo.agent';
 import { ProductManagerAgent } from './agents/productManager.agent';
 import { TeamOrchestratorAgent } from './agents/specialists/teamOrchestrator';
@@ -13,12 +14,6 @@ const PM_INTERVAL_MS         = parseInt(process.env.PM_INTERVAL_MS         ?? '1
 const SPECIALIST_INTERVAL_MS = parseInt(process.env.SPECIALIST_INTERVAL_MS ?? '300000', 10);
 
 async function main(): Promise<void> {
-  // Validate API key
-  if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === 'your_anthropic_api_key_here') {
-    console.error('❌  ANTHROPIC_API_KEY fehlt oder ist noch nicht gesetzt. Bitte .env Datei anpassen.');
-    process.exit(1);
-  }
-
   // ── Create agents ──────────────────────────────────────────
   const cmo  = new CMOAgent(CMO_INTERVAL_MS);
   const pm1  = new ProductManagerAgent(1, PM_INTERVAL_MS);
@@ -61,7 +56,7 @@ async function main(): Promise<void> {
   app.listen(PORT, () => {
     console.log(`\n🏭  Ideenschmiede läuft auf http://localhost:${PORT}`);
     console.log(`📊  Dashboard: http://localhost:${PORT}`);
-    console.log(`🔌  Anthropic API: ${process.env.ANTHROPIC_API_KEY!.slice(0, 10)}…\n`);
+    console.log(`🔌  LLM: GitHub Copilot SDK (${process.env.COPILOT_MODEL ?? 'gpt-4o-mini'})\n`);
   });
 
   // ── Start all agents ───────────────────────────────────────
@@ -77,16 +72,15 @@ async function main(): Promise<void> {
   console.log('\n🚀  Simulation gestartet!\n');
 
   // ── Graceful shutdown ──────────────────────────────────────
-  process.on('SIGINT', () => {
+  const shutdown = async () => {
     console.log('\n🛑  Stoppe alle Agenten…');
     for (const agent of agents) agent.stop();
+    await stopCopilotClient();
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', () => {
-    for (const agent of agents) agent.stop();
-    process.exit(0);
-  });
+  process.on('SIGINT', () => { shutdown().catch(() => process.exit(1)); });
+  process.on('SIGTERM', () => { shutdown().catch(() => process.exit(1)); });
 }
 
 main().catch((err) => {

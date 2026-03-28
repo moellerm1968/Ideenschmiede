@@ -4,7 +4,6 @@ import { BaseAgent } from './base.agent';
 import { claimNextIdea, appendProduct, markIdeaDone } from '../data/backlogManager';
 
 const AGENT_PROFILE = path.join(process.cwd(), 'agents', 'ProductManager.Agent.md');
-const MODEL = 'claude-haiku-4-5';
 
 export class ProductManagerAgent extends BaseAgent {
   /** pmNumber: 1, 2, or 3 — each PM has a slightly different perspective */
@@ -30,14 +29,7 @@ export class ProductManagerAgent extends BaseAgent {
     const today = new Date().toISOString().slice(0, 10);
     const perspectiveHint = this.getPerspectiveHint();
 
-    const response = await this.callAnthropic({
-      model: MODEL,
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [
-        {
-          role: 'user',
-          content: `Heute ist der ${today}. Du bist ${this.agentId}.
+    const userPrompt = `Heute ist der ${today}. Du bist ${this.agentId}.
 
 ${perspectiveHint}
 
@@ -57,12 +49,9 @@ Verwende für den Metadaten-Kommentar EXAKT dieses Template (ersetze Platzhalter
 [...rest des Briefings im vorgeschriebenen Format...]
 ---
 
-Bringe deine eigene, spezifische Perspektive ein — nicht einfach die Idee zusammenfassen.`,
-        },
-      ],
-    });
+Bringe deine eigene, spezifische Perspektive ein — nicht einfach die Idee zusammenfassen.`;
 
-    const text = this.extractText(response);
+    const text = await this.callCopilot(systemPrompt, userPrompt);
     if (!text.trim()) {
       await markIdeaDone(idea.id, this.agentId);
       this.setStatus('idle', `Idee ${idea.id} verarbeitet (leere Antwort)`);
