@@ -9,6 +9,7 @@ dist/
 .env
 
 # Runtime data — generierte Inhalte
+/data/
 data/Ideenbacklog.md
 data/ProductBacklog.md
 data/DetailedProductPlans.md
